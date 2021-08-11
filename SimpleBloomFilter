@@ -1,0 +1,84 @@
+import oracle.jrockit.jfr.events.Bits;
+
+import java.util.BitSet;
+
+public class SimpleBloomFilter {
+    // https://www.bilibili.com/video/BV1Zz4y1Z71n?from=search&seid=7003175043920266151
+    // https://www.jianshu.com/p/88c6ac4b38c8
+    /*
+    n位数组、k个hash函数
+    存在误判-》根据误判率来设置k值
+    应用场景：缓存，去重，
+     */
+
+    private static final int DEFAULT_SIZE = 2 << 24;
+    private static final int[] seeds = new int[]{7, 11, 13, 31, 37, 61,};
+
+    // bitset
+    private BitSet bits = new BitSet(DEFAULT_SIZE);
+    // hash函数列表
+    private SimpleHash[] func = new SimpleHash[seeds.length];
+
+    public static void main(String[] args){
+        String value = "fdu";
+        SimpleBloomFilter filter = new SimpleBloomFilter();
+        System.out.println(
+                filter.contains(value)
+        );
+        filter.add(value);
+        System.out.println(
+                filter.contains(value)
+        );
+        // 判断key是否在bloom 过滤器的set中
+        System.out.println(
+                filter.contains("thu")
+        );
+    }
+
+    public SimpleBloomFilter(){
+        for(int i = 0; i<seeds.length; i++){
+            for(SimpleHash f : func){
+                func[i] = new SimpleHash(DEFAULT_SIZE, seeds[i]);
+            }
+        }
+    }
+
+    public void add(String value){
+        for(SimpleHash f:func){
+            bits.set(f.hash(value), true);
+        }
+    }
+
+    //判断是否存在这个key，将当前这个value通过k个函数hash函数进行处理，获得的hash值判断是否在list中
+    public boolean contains(String value){
+        if(value == null){
+            return false;
+        }
+        boolean ret = true;
+        for(SimpleHash f:func){
+            ret = ret && bits.get(f.hash(value));
+        }
+        return ret;
+    }
+
+    // 生成hash值的函数
+    public class SimpleHash{
+        private int cap;
+        private int seed;
+
+        public SimpleHash(int cap, int seed){
+            this.cap = cap;
+            this.seed = seed;
+        }
+
+        public int hash(String value){
+            int result = 0;
+            int len = value.length();
+            for(int i = 0; i < len; i++){
+                result = seed * result + value.charAt(i);
+            }
+            return (cap - 1) & result;
+        }
+    }
+
+}
